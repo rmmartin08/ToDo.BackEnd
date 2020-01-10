@@ -9,10 +9,11 @@ using ToDo.BackEnd.Models;
 
 namespace ToDo.BackEnd.Controllers
 {
-	public class UsersController : ApiController
-	{
-		[HttpGet]
-		public List<User> GetAllUsers()
+    public class UsersController : ApiController
+    {
+        [HttpGet]
+        [Route("api/users/")]
+        public List<User> GetAllUsers()
 		{
 			using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
 			{
