@@ -14,6 +14,7 @@ namespace ToDo.BackEnd.Controllers
 
 
 		[HttpGet]
+
 		public List<Task> GetAllTasks()
 		{
 			using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
@@ -26,38 +27,38 @@ namespace ToDo.BackEnd.Controllers
 		}
 
 		[HttpPost]
-		public IHttpActionResult CreateNewTask(Task newTask)
+        [Route("api/tasks/")]
+        public IHttpActionResult CreateNewTask(Task newTask)
 		{
-			using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
-			{
-				var taskCollection = db.GetCollection<Task>("Tasks");
+            using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
+            {
+                var taskCollection = db.GetCollection<Task>("Tasks");
+                var userCollection = db.GetCollection<User>("Users");
+                var foundUser = userCollection.FindById(newTask.UserId);
 
-				var userCollection = db.GetCollection<User>("Users");
-
-				var foundUser = userCollection.FindById(newTask.UserId);
-
-				if (foundUser == null)
-				{
-					return BadRequest();
-				}
-
-
-				newTask.Id = Guid.NewGuid();
-
-				newTask.CreatedDate = DateTime.Now;
-
-				taskCollection.Insert(newTask);
+                if (foundUser == null)
+                {
+                    return BadRequest();
+                }
+                newTask.Id = Guid.NewGuid();
+                newTask.CreatedDate = DateTime.Now;
+                
+                if (newTask.IsComplete == null)
+                {
+                    newTask.IsComplete = false;
+                }
 
 				if (newTask.IsComplete == false)
 				{
 					newTask.CompleteDate = null;
-				}
+				}                
 				else
 				{
 					newTask.CompleteDate = DateTime.Now;
 				}
 
-				return Ok(newTask);
+                taskCollection.Insert(newTask);
+                return Ok(newTask);
 			}
 		}
 
@@ -94,30 +95,39 @@ namespace ToDo.BackEnd.Controllers
 			}
 		}
 
-		[HttpPut]
-		[Route("api/tasks/{Id:Guid}")]
-		public IHttpActionResult UpdateTask(Guid Id, Task updatingTask)
+        [HttpGet]
+        [Route("api/tasks/")]
+        public IHttpActionResult GetTasksforUser(Guid userId)
+        {
+            using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
+            {
+                var taskCollection = db.GetCollection<Task>("Tasks");
+                var userCollection = db.GetCollection<User>("Users");
+
+                if (userCollection.FindById(userId) == null)
+                {
+                    return NotFound();
+                }
+                return Ok(taskCollection.Find(t => t.UserId == userId).ToList());
+                
+            }
+        }
+
+        [HttpPut]
+        [Route("api/tasks/")]
+        public IHttpActionResult UpdateTask(Task updatingTask)
 		{
 			using (var db = new LiteDatabase(@"C:\ToDo\ToDo.db"))
 			{
 				var taskCollection = db.GetCollection<Task>("Tasks");
 
-				var foundTask = taskCollection.FindById(Id);
+				var foundTask = taskCollection.FindById(updatingTask.Id);
 
 				if (foundTask == null)
 				{
 					return BadRequest();
 				}
-
-				var userCollection = db.GetCollection<User>("Users");
-
-				var foundUser = userCollection.FindById(updatingTask.UserId);
-
-				if (foundUser == null)
-				{
-					return BadRequest();
-				}
-
+                
 				if (!string.IsNullOrWhiteSpace(updatingTask.Title))
 				{
 					foundTask.Title = updatingTask.Title;
@@ -135,7 +145,15 @@ namespace ToDo.BackEnd.Controllers
 
 				if (updatingTask.UserId != default(Guid))
 				{
-					foundTask.UserId = updatingTask.UserId;
+                    var userCollection = db.GetCollection<User>("Users");
+
+                    var foundUser = userCollection.FindById(updatingTask.UserId);
+
+                    if (foundUser == null)
+                    {
+                        return BadRequest();
+                    }
+                    foundTask.UserId = updatingTask.UserId;
 				}
 
 				if (updatingTask.IsComplete.HasValue)
